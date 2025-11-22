@@ -41,7 +41,7 @@
       box-shadow: 0 10px 28px rgba(0,0,0,0.5);
       background: #020617;
       border: 2px solid #4b5563;
-      touch-action: none; /* wichtig für Mobile, damit Wischen erkannt wird */
+      touch-action: none; /* wichtig für Mobile */
     }
 
     .hud {
@@ -120,6 +120,23 @@
     bestEl.textContent = best;
     coinsEl.textContent = coinsCollected;
 
+    // Hilfsfunktion: abgerundetes Rechteck, auch wenn roundRect nicht existiert
+    function drawRoundRect(x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.lineTo(x + w - rr, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr);
+      ctx.quadraticCurveTo(x, y, x + rr, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     // Fixe Among-Us-Figur (rot)
     const player = {
       x: width / 2,
@@ -135,7 +152,6 @@
     const obstacles = [];
     const coins = [];
 
-    // Bunte Fahrzeuge/Raumschiffe
     const shipColors = [
       { body: "#22c55e", cockpit: "#a5b4fc" },
       { body: "#ec4899", cockpit: "#e0f2fe" },
@@ -150,4 +166,417 @@
         if (!isRoad) continue;
 
         const laneY = baseY - i * laneHeight;
-        const direction = Math.random() < 0
+        const direction = Math.random() < 0.5 ? 1 : -1;
+        const speed = 40 + Math.random() * 70; // 40–110 px/s
+        const carCount = 2;
+
+        for (let j = 0; j < carCount; j++) {
+          const carWidth = 60;
+          const carHeight = 30;
+          let baseX = (j + 0.5) * (width / carCount);
+          baseX += (Math.random() - 0.5) * 40;
+
+          const color = shipColors[Math.floor(Math.random() * shipColors.length)];
+
+          obstacles.push({
+            x: baseX, // Mittelpunkt
+            y: laneY - carHeight / 2,
+            w: carWidth,
+            h: carHeight,
+            speed: speed * direction,
+            bodyColor: color.body,
+            cockpitColor: color.cockpit
+          });
+        }
+      }
+    }
+
+    function createCoins() {
+      coins.length = 0;
+      coinsCollected = 0;
+      coinsEl.textContent = coinsCollected;
+
+      // Münzen auf Gras-Lanes
+      for (let i = 1; i < laneCount; i++) {
+        const isRoad = i % 2 === 1;
+        if (isRoad) continue;
+
+        const y = baseY - i * laneHeight;
+        const coinCount = 1 + Math.floor(Math.random() * 2);
+
+        for (let j = 0; j < coinCount; j++) {
+          const x = 60 + Math.random() * (width - 120);
+          coins.push({
+            x,
+            y,
+            r: 10,
+            active: true
+          });
+        }
+      }
+    }
+
+    function resetGame() {
+      player.x = width / 2;
+      player.y = baseY;
+      player.lane = 0;
+      score = 0;
+      gameOver = false;
+      scoreEl.textContent = score;
+      createObstacles();
+      createCoins();
+    }
+
+    function drawBackground() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, "#0f172a");
+      gradient.addColorStop(0.3, "#1e293b");
+      gradient.addColorStop(0.6, "#020617");
+      gradient.addColorStop(1, "#000000");
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Sterne
+      ctx.fillStyle = "#e5e7eb";
+      for (let i = 0; i < 40; i++) {
+        const x = (i * 37) % width;
+        const y = (i * 73) % height;
+        ctx.fillRect(x, y, 1, 1);
+      }
+
+      // Lanes
+      for (let i = 0; i < laneCount; i++) {
+        const y = baseY - i * laneHeight;
+        const isRoad = i % 2 === 1;
+
+        if (isRoad) {
+          const roadGrad = ctx.createLinearGradient(0, y - laneHeight / 2, width, y + laneHeight / 2);
+          roadGrad.addColorStop(0, "#111827");
+          roadGrad.addColorStop(1, "#020617");
+          ctx.fillStyle = roadGrad;
+          ctx.fillRect(0, y - laneHeight / 2, width, laneHeight);
+
+          ctx.strokeStyle = "rgba(248, 250, 252, 0.25)";
+          ctx.setLineDash([10, 10]);
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+        } else {
+          const safeGrad = ctx.createLinearGradient(0, y - laneHeight / 2, width, y + laneHeight / 2);
+          safeGrad.addColorStop(0, "rgba(22, 163, 74, 0.7)");
+          safeGrad.addColorStop(1, "rgba(34, 197, 94, 0.9)");
+          ctx.fillStyle = safeGrad;
+          ctx.fillRect(0, y - laneHeight / 2, width, laneHeight);
+
+          // Blumen & Büsche
+          for (let x = 20 + (i * 17) % 40; x < width; x += 60) {
+            ctx.fillStyle = "#f97316";
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#22c55e";
+            ctx.fillRect(x - 0.5, y + 3, 1, 5);
+
+            ctx.fillStyle = "rgba(16, 185, 129, 0.9)";
+            ctx.beginPath();
+            ctx.arc(x + 20, y + 8, 6, 0, Math.PI * 2);
+            ctx.arc(x + 26, y + 8, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Bäume am Rand
+          const treeCount = 2;
+          for (let t = 0; t < treeCount; t++) {
+            const side = (t % 2 === 0) ? 10 : width - 30;
+            const treeY = y - 10;
+
+            ctx.fillStyle = "#92400e";
+            ctx.fillRect(side + 6, treeY + 10, 6, 18);
+
+            ctx.fillStyle = "#15803d";
+            ctx.beginPath();
+            ctx.arc(side + 9, treeY + 8, 10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    function drawPlayer() {
+      const { x, y, w, h, bodyColor, visorColor } = player;
+
+      // Schatten
+      ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
+      ctx.beginPath();
+      ctx.ellipse(x, y + h / 2 + 4, w * 0.8, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Körper
+      ctx.fillStyle = bodyColor;
+      drawRoundRect(x - w / 2, y - h / 2, w, h, 12);
+
+      // Beine
+      ctx.fillRect(x - w / 2 + 4, y + h / 2 - 8, w - 8, 8);
+
+      // Visier
+      ctx.fillStyle = visorColor;
+      const visorWidth = w * 0.7;
+      const visorHeight = h * 0.4;
+      drawRoundRect(
+        x - visorWidth / 2,
+        y - h / 2 + 6,
+        visorWidth,
+        visorHeight,
+        8
+      );
+
+      // Glanz
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.beginPath();
+      ctx.ellipse(
+        x - visorWidth / 4,
+        y - h / 2 + 12,
+        visorWidth / 5,
+        visorHeight / 3,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    function drawObstacles() {
+      for (const o of obstacles) {
+        ctx.fillStyle = o.bodyColor;
+        drawRoundRect(o.x - o.w / 2, o.y, o.w, o.h, 10);
+
+        ctx.fillStyle = o.cockpitColor;
+        ctx.fillRect(o.x - o.w / 2 + 10, o.y + 6, o.w - 20, o.h - 12);
+
+        ctx.fillStyle = "rgba(248, 250, 252, 0.8)";
+        ctx.beginPath();
+        ctx.arc(o.x - o.w / 2 + 5, o.y + o.h / 2, 3, 0, Math.PI * 2);
+        ctx.arc(o.x + o.w / 2 - 5, o.y + o.h / 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawCoins() {
+      for (const c of coins) {
+        if (!c.active) continue;
+        const grad = ctx.createRadialGradient(c.x - 3, c.y - 3, 2, c.x, c.y, c.r);
+        grad.addColorStop(0, "#fef9c3");
+        grad.addColorStop(0.4, "#facc15");
+        grad.addColorStop(1, "#b45309");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.beginPath();
+        ctx.arc(c.x - 3, c.y - 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function updateObstacles(dt) {
+      for (const o of obstacles) {
+        o.x += o.speed * dt;
+
+        if (o.speed > 0 && o.x - o.w / 2 > width + 80) {
+          o.x = -80;
+        } else if (o.speed < 0 && o.x + o.w / 2 < -80) {
+          o.x = width + 80;
+        }
+      }
+    }
+
+    function checkCollisions() {
+      // Crash mit Autos
+      for (const o of obstacles) {
+        if (
+          player.x - player.w / 2 < o.x + o.w / 2 &&
+          player.x + player.w / 2 > o.x - o.w / 2 &&
+          player.y - player.h / 2 < o.y + o.h &&
+          player.y + player.h / 2 > o.y
+        ) {
+          gameOver = true;
+        }
+      }
+
+      // Münzen einsammeln
+      for (const c of coins) {
+        if (!c.active) continue;
+        const dx = player.x - c.x;
+        const dy = player.y - c.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < c.r + 16) {
+          c.active = false;
+          coinsCollected++;
+          coinsEl.textContent = coinsCollected;
+        }
+      }
+    }
+
+    function updateScore() {
+      if (player.lane > score) {
+        score = player.lane;
+        scoreEl.textContent = score;
+        if (score > best) {
+          best = score;
+          bestEl.textContent = best;
+          localStorage.setItem("spaceCrossyBest", best);
+        }
+      }
+    }
+
+    function gameLoop(timestamp) {
+      let dt = (timestamp - lastTime) / 1000;
+      if (dt > 0.05) dt = 0.05;
+      lastTime = timestamp;
+
+      drawBackground();
+
+      if (!gameOver) {
+        updateObstacles(dt);
+        checkCollisions();
+        updateScore();
+      }
+
+      drawCoins();
+      drawObstacles();
+      drawPlayer();
+
+      if (gameOver) {
+        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+        ctx.fillRect(35, height / 2 - 80, width - 70, 160);
+
+        ctx.fillStyle = "#f9fafb";
+        ctx.textAlign = "center";
+        ctx.font = "22px system-ui";
+        ctx.fillText("Game Over", width / 2, height / 2 - 24);
+
+        ctx.font = "14px system-ui";
+        ctx.fillText(`Score: ${score}   Best: ${best}`, width / 2, height / 2 + 2);
+        ctx.fillText(`Münzen: ${coinsCollected}`, width / 2, height / 2 + 22);
+        ctx.fillText("Mit „Neustart“ geht's weiter – neue Runde!", width / 2, height / 2 + 44);
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Bewegungen
+    function moveForward() {
+      if (gameOver) return;
+      player.y -= laneHeight;
+      player.lane += 1;
+    }
+
+    function moveLeft() {
+      if (gameOver) return;
+      player.x -= player.speedX;
+      if (player.x < player.w / 2) player.x = player.w / 2;
+    }
+
+    function moveRight() {
+      if (gameOver) return;
+      player.x += player.speedX;
+      if (player.x > width - player.w / 2) player.x = width - player.w / 2;
+    }
+
+    // Tastatur
+    window.addEventListener("keydown", (e) => {
+      if (gameOver) return;
+      const key = e.key.toLowerCase();
+      if (["arrowup", "w"].includes(key)) {
+        moveForward();
+      } else if (["arrowleft", "a"].includes(key)) {
+        moveLeft();
+      } else if (["arrowright", "d"].includes(key)) {
+        moveRight();
+      }
+    });
+
+    // Tap & Swipe
+    let pointerStart = null;
+
+    function getCanvasPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+    }
+
+    function handlePointerStart(x, y) {
+      pointerStart = { x, y };
+    }
+
+    function handlePointerEnd(x, y) {
+      if (gameOver) return;
+
+      if (!pointerStart) {
+        moveForward();
+        return;
+      }
+
+      const dx = x - pointerStart.x;
+      const dy = y - pointerStart.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      const threshold = 30;
+
+      if (absDx > threshold && absDx > absDy) {
+        if (dx > 0) {
+          moveRight();
+        } else {
+          moveLeft();
+        }
+      } else {
+        moveForward();
+      }
+      pointerStart = null;
+    }
+
+    // Maus
+    canvas.addEventListener("mousedown", (e) => {
+      const pos = getCanvasPos(e);
+      handlePointerStart(pos.x, pos.y);
+    });
+
+    canvas.addEventListener("mouseup", (e) => {
+      const pos = getCanvasPos(e);
+      handlePointerEnd(pos.x, pos.y);
+    });
+
+    // Touch
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      handlePointerStart(touch.clientX - rect.left, touch.clientY - rect.top);
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      const rect = canvas.getBoundingClientRect();
+      handlePointerEnd(touch.clientX - rect.left, touch.clientY - rect.top);
+    }, { passive: false });
+
+    restartBtn.addEventListener("click", () => {
+      resetGame();
+    });
+
+    // Direkt starten
+    resetGame();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
