@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Space Crossy – Bunte Version mit Münzen & Wischen</title>
+  <title>Space Crossy – Among-Us-Figur</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -74,37 +74,6 @@
       transform: translateY(1px);
       box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
-
-    .character-select {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 6px;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .character-label {
-      font-size: 13px;
-      opacity: 0.85;
-      margin-right: 4px;
-    }
-
-    .character-btn {
-      width: 30px;
-      height: 30px;
-      border-radius: 999px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      padding: 0;
-      background-clip: padding-box;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
-
-    .character-btn.selected {
-      border-color: #fde047;
-      box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.4), 0 3px 10px rgba(0,0,0,0.5);
-    }
   </style>
 </head>
 <body>
@@ -114,18 +83,6 @@
       Tippen = vorwärts • Wischen links/rechts = zur Seite • Pfeiltasten/WASD gehen auch.
     </p>
 
-    <div class="character-select">
-      <span class="character-label">Figur wählen:</span>
-      <button class="character-btn selected" data-id="red"
-        style="background: radial-gradient(circle at 30% 20%, #fecaca 0, #b91c1c 35%, #7f1d1d 100%);"></button>
-      <button class="character-btn" data-id="blue"
-        style="background: radial-gradient(circle at 30% 20%, #bfdbfe 0, #1d4ed8 35%, #1e3a8a 100%);"></button>
-      <button class="character-btn" data-id="yellow"
-        style="background: radial-gradient(circle at 30% 20%, #fef9c3 0, #eab308 35%, #a16207 100%);"></button>
-      <button class="character-btn" data-id="purple"
-        style="background: radial-gradient(circle at 30% 20%, #e9d5ff 0, #7c3aed 35%, #4c1d95 100%);"></button>
-    </div>
-
     <canvas id="game" width="400" height="600"></canvas>
 
     <div class="hud">
@@ -134,4 +91,63 @@
       <div>Münzen: <span id="coins">0</span></div>
     </div>
 
-    <div class=
+    <div class="button-row">
+      <button id="restartBtn">Neustart</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+    const coinsEl = document.getElementById("coins");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const laneHeight = 60;
+    const laneCount = 8;
+    const baseY = height - laneHeight * 1.5;
+
+    let lastTime = 0;
+    let gameOver = false;
+    let score = 0;
+    let best = Number(localStorage.getItem("spaceCrossyBest") || 0);
+    let coinsCollected = 0;
+
+    bestEl.textContent = best;
+    coinsEl.textContent = coinsCollected;
+
+    // Fixe Among-Us-Figur (rot)
+    const player = {
+      x: width / 2,
+      y: baseY,
+      w: 30,
+      h: 38,
+      lane: 0,
+      speedX: laneHeight,
+      bodyColor: "#ef4444",
+      visorColor: "#bfdbfe"
+    };
+
+    const obstacles = [];
+    const coins = [];
+
+    // Bunte Fahrzeuge/Raumschiffe
+    const shipColors = [
+      { body: "#22c55e", cockpit: "#a5b4fc" },
+      { body: "#ec4899", cockpit: "#e0f2fe" },
+      { body: "#f97316", cockpit: "#fed7aa" },
+      { body: "#06b6d4", cockpit: "#bae6fd" }
+    ];
+
+    function createObstacles() {
+      obstacles.length = 0;
+      for (let i = 0; i < laneCount; i++) {
+        const isRoad = i % 2 === 1;
+        if (!isRoad) continue;
+
+        const laneY = baseY - i * laneHeight;
+        const direction = Math.random() < 0
